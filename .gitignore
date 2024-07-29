@@ -1,0 +1,4 @@
+OPENAI_ACCESS_TOKEN
+PINECONE_ACCESS_TOKEN
+.idea
+__pycache__

@@ -1,0 +1,9 @@
+pypdf2
+pdfminer
+pdfminer.six
+pdfplumber
+pdf2image
+pillow
+pytesseract
+openai
+pinecone-client
