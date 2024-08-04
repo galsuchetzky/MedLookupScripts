@@ -4,3 +4,4 @@ PINECONE_ACCESS_TOKEN
 __pycache__
 pdfs
 all_drug_names.json
+cropped_image.pdf

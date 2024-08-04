@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 MODEL = "text-embedding-3-small"
 index_name = 'semantic-search-openai'
 spec = ServerlessSpec(cloud="aws", region="us-east-1")
+INDEX_POPULATED = False
 
 
 def get_pinecone_client():
@@ -61,7 +62,12 @@ def get_index():
 
 
 def populate_index(input_texts, index):
-    count = 0  # we'll use the count to create unique IDs
+    if INDEX_POPULATED:
+        print("index is already populated. If you wish to populate it anyway change INDEX_POPULATED to False and run "
+              "again. Note that it will not empty the existing index!")
+        return
+
+    print('Populating the index')
     batch_size = 32  # process everything in batches of 32
     for i in tqdm(range(0, len(input_texts), batch_size)):
         # set end position of batch
@@ -70,10 +76,10 @@ def populate_index(input_texts, index):
         lines_batch = input_texts[i: i + batch_size]
         ids_batch = [str(n) for n in range(i, i_end)]
         # create embeddings
-        res = openai_client.embeddings.create(input=lines_batch, model=MODEL)
+        res = openai_client.embeddings.create(input=map(lambda pair: pair[1], lines_batch), model=MODEL)
         embeds = [record.embedding for record in res.data]
         # prep metadata and upsert batch
-        meta = [{'text': line} for line in lines_batch]
+        meta = [{'drug': line[0], 'text': line[1]} for line in lines_batch]
         to_upsert = zip(ids_batch, embeds, meta)
         # upsert to Pinecone
         index.upsert(vectors=list(to_upsert))
@@ -81,10 +87,10 @@ def populate_index(input_texts, index):
 
 def query_index(query, index):
     xq = openai_client.embeddings.create(input=query, model=MODEL).data[0].embedding
-    res = index.query(vector=[xq], top_k=5, include_metadata=True)
+    res = index.query(vector=[xq], top_k=2, include_metadata=True)
+    return res
 
-
-if __name__ == '__main__':
-    trec = ['a', 'r', 'v', 'd']
-    index = get_index()
-    populate_index(trec, index)
+# if __name__ == '__main__':
+# trec = ['a', 'r', 'v', 'd']
+# index = get_index()
+# populate_index(trec, index)

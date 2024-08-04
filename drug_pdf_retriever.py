@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import re
 
 base_drug_url = 'https://mohpublic.z6.web.core.windows.net/IsraelDrugs/'
 all_drug_names_url = 'https://medlookup.org/getAllDrugNames'
@@ -60,29 +61,40 @@ def get_drugs_info(drug_names):
 
 def get_drugs_leaflets(drug_names, language):
     response = get_drugs_info(drug_names)
-    leaflets = list(set([response[drug][language]['l'] for drug in response]))
-    leaflets_urls = list(map(lambda pdf: base_drug_url + pdf, leaflets))
+    leaflets = {}
+    for drug in response:
+        if language not in response[drug]:
+            continue
+        pdf = response[drug][language]['l']
+        if pdf in leaflets.values():
+            continue
+        leaflets[drug] = pdf
 
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
 
-    for url in leaflets_urls:
-        try:
-            # Get the filename from the URL
-            filename = os.path.basename(url)
-            file_path = os.path.join(download_dir, filename)
+    for drug in leaflets:
+        filename = re.sub(r'[/\\]', '-', drug) + '.pdf'
+        file_path = os.path.join(download_dir, filename)
+        if not os.path.exists(file_path):
+            try:
+                # Send a GET request to the URL
+                response = requests.get(base_drug_url + leaflets[drug])
+                response.raise_for_status()  # Raise an exception for HTTP errors
 
-            # Send a GET request to the URL
-            response = requests.get(url)
-            response.raise_for_status()  # Raise an exception for HTTP errors
+                # Write the content to a file
+                with open(file_path, 'wb') as file:
+                    file.write(response.content)
 
-            # Write the content to a file
-            with open(file_path, 'wb') as file:
-                file.write(response.content)
+                print(f"Successfully downloaded {filename}")
+            except requests.exceptions.RequestException as e:
+                print(f"An error occurred while downloading {base_drug_url + leaflets[drug]}: {e}")
 
-            print(f"Successfully downloaded {filename}")
-        except requests.exceptions.RequestException as e:
-            print(f"An error occurred while downloading {url}: {e}")
 
-all_drugs = get_drug_names()['drugs']
-get_drugs_leaflets(all_drugs[:6], 'e')
+def get_drugs_pdfs():
+    all_drugs = get_drug_names()['drugs']
+    get_drugs_leaflets(all_drugs[:500], 'e')
+
+
+if __name__ == '__main__':
+    get_drugs_pdfs()
