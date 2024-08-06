@@ -74,7 +74,10 @@ def get_drugs_leaflets(drug_names, language):
         os.makedirs(download_dir)
 
     for drug in leaflets:
-        filename = re.sub(r'[/\\]', '-', drug) + '.pdf'
+        drugname = re.sub(r'[/\\]', '-', drug)
+        drugname = re.sub('"', '', drugname)
+        filename = drugname + '.pdf'
+
         file_path = os.path.join(download_dir, filename)
         if not os.path.exists(file_path):
             try:
@@ -93,7 +96,7 @@ def get_drugs_leaflets(drug_names, language):
 
 def get_drugs_pdfs():
     all_drugs = get_drug_names()['drugs']
-    get_drugs_leaflets(all_drugs[:500], 'e')
+    get_drugs_leaflets(all_drugs, 'e')
 
 
 if __name__ == '__main__':

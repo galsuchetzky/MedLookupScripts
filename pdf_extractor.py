@@ -245,3 +245,7 @@ def extract_pdf_text(pdf_path):
     # Display the content of the page
     result = ''.join(text_per_page['Page_0'][4])
     return result
+
+
+if __name__ == '__main__':
+    extract_pdf_text('pdfs/AJOVY.pdf')

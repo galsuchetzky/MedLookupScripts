@@ -11,6 +11,7 @@ from semantic_search import get_index, populate_index, query_index
 pdfs_dir = 'pdfs'
 summaries_path = 'summaries.json'
 MAX_CHUNK_SIZE = 10000  # Maximum number of characters the AI can handle
+failed_path = 'failed.json'
 
 system_prompt = """
 you are a drug leaflet summarizer. You are given the content of drug user leaflet and your task is to return a paragraph
@@ -28,6 +29,7 @@ def load_existing_summaries(filepath):
 def pre_process_summaries():
     # For each drug get its PDF from health website
     get_drugs_pdfs()
+    failed_process_list = {'files': []}
 
     # Iterate over all files in the directory and get summary. save the summaries to a json file.
     summaries = load_existing_summaries(summaries_path)
@@ -48,9 +50,11 @@ def pre_process_summaries():
                     pdf_content = extract_pdf_text(pdf_path)
                     if not pdf_content.strip():
                         print(f'failed to extract text from: {filename}, came back empty.')
+                        failed_process_list['files'].append(filename)
                         continue
                 except Exception as e:
                     print(f'failed to extract text from: {filename}')
+                    failed_process_list['files'].append(filename)
                     continue
 
                 # Get the summary from the AI model
@@ -68,6 +72,7 @@ def pre_process_summaries():
                 summaries[drug_name] = summary.strip()
         except Exception as e:
             print(f'failed to process file: {filename}.')
+            failed_process_list['files'].append(filename)
 
     # Save the summaries to a JSON file
     print("Saving summaries to JSON file...")
@@ -75,6 +80,11 @@ def pre_process_summaries():
         json.dump(summaries, file, ensure_ascii=False, indent=4)
 
     print("Summaries have been saved to:", summaries_path)
+
+    with open(failed_path, 'w', encoding='utf-8') as file:
+        json.dump(failed_process_list, file, ensure_ascii=False, indent=4)
+
+    print("failed filenames have been saved to:", failed_path)
 
 
 def pre_process_index():
@@ -105,6 +115,7 @@ def pre_process():
     pre_process_summaries()
     pre_process_index()
 
+
 if __name__ == '__main__':
     pre_process()
-    query()
+    # query()
