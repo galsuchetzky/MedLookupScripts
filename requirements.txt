@@ -8,6 +8,3 @@ pytesseract
 openai
 pinecone-client
 requests
-os
-json
-re

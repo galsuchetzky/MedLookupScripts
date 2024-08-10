@@ -2,6 +2,6 @@ OPENAI_ACCESS_TOKEN
 PINECONE_ACCESS_TOKEN
 .idea
 __pycache__
-pdfs
+pdfs*
 all_drug_names.json
 cropped_image.pdf

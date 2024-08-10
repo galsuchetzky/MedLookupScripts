@@ -7,7 +7,7 @@ base_drug_url = 'https://mohpublic.z6.web.core.windows.net/IsraelDrugs/'
 all_drug_names_url = 'https://medlookup.org/getAllDrugNames'
 get_drugs_info_url = 'https://medlookup.org/getDragsInfo'
 all_drug_names_file_path = 'all_drug_names.json'
-download_dir = 'pdfs'
+download_dir_prefix = 'pdfs'
 
 
 def get_drug_names():
@@ -69,7 +69,7 @@ def get_drugs_leaflets(drug_names, language):
         if pdf in leaflets.values():
             continue
         leaflets[drug] = pdf
-
+    download_dir = f'{download_dir_prefix}_{language}' 
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
 

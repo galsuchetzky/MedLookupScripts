@@ -147,6 +147,7 @@ def extract_pdf_text(pdf_path):
     # Create a boolean variable for image detection
     image_flag = False
 
+
     # We extract the pages from the PDF
     for pagenum, page in enumerate(extract_pages(pdf_path)):
 
@@ -157,6 +158,10 @@ def extract_pdf_text(pdf_path):
         text_from_images = []
         text_from_tables = []
         page_content = []
+
+        has_text = False
+        has_picture = False
+
         # Initialize the number of the examined tables
         table_in_page = -1
         # Open the pdf file
@@ -184,8 +189,10 @@ def extract_pdf_text(pdf_path):
 
         # Find the elements that composed a page
         for i, component in enumerate(page_elements):
+
             # Extract the element of the page layout
             element = component[1]
+
 
             # Check the elements for tables
             if table_in_page == -1:
@@ -205,6 +212,7 @@ def extract_pdf_text(pdf_path):
 
                 # Check if the element is text element
                 if isinstance(element, LTTextContainer):
+                    has_text = True
                     # Use the function to extract the text and format for each text element
                     (line_text, format_per_line) = text_extraction(element)
                     # Append the text of each line to the page text
@@ -215,6 +223,7 @@ def extract_pdf_text(pdf_path):
 
                 # Check the elements for images
                 if isinstance(element, LTFigure):
+                    has_picture = True
                     # Crop the image from PDF
                     crop_image(element, pageObj)
                     # Convert the croped pdf to image
@@ -243,9 +252,36 @@ def extract_pdf_text(pdf_path):
         os.remove('PDF_image.png')
 
     # Display the content of the page
-    result = ''.join(text_per_page['Page_0'][4])
-    return result
+    result = ''
+    for key, page_content in text_per_page.items():
+        if len(page_content) >= 5:
+            result += ''.join(page_content[4])
+    return result, has_text, has_picture, len(text_per_page.items())
 
+def enumerate_pdfs(basedir='pdfs_en'):
+    text_dir = f'{basedir}_text' 
+    if not os.path.exists(text_dir):
+        os.makedirs(text_dir)
+
+    entries = os.listdir(basedir)
+
+    # Filter out directories, keep only files
+    files = [entry for entry in entries if os.path.isfile(os.path.join(basedir, entry))]
+
+
+    # Enumerate and print the files
+    for index, file in enumerate(files, start=1):
+        #file = 'AJOVY.pdf'
+        drug_text_file_name = f'{text_dir}/{file}'.replace('.pdf','.txt')
+
+
+        pdf_text, has_text, has_picture, pages = extract_pdf_text(f'{basedir}/{file}')
+        print (f'{basedir}/{file}', f'len {len(pdf_text)}', f'text: {has_text}', f'image: {has_picture}', f'pages: {pages}')
+        with open(drug_text_file_name, 'wb') as file:
+            file.write(pdf_text.encode('utf-8'))
+
+        #exit(-1)
+    
 
 if __name__ == '__main__':
-    extract_pdf_text('pdfs/AJOVY.pdf')
+    enumerate_pdfs('pdfs_en')
