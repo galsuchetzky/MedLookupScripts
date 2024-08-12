@@ -22,6 +22,7 @@ import pytesseract
 # To remove the additional created files
 import os
 
+MIN_LENGTH = 1000
 
 # Create function to extract text
 
@@ -135,6 +136,15 @@ def image_to_text(image_path):
     text = pytesseract.image_to_string(img)
     return text
 
+def crop_and_extract_image(pdf_path):
+    # Convert the croped pdf to image
+    convert_to_images(pdf_path)
+    # Extract the text from image
+    image_text = image_to_text('PDF_image.png')
+    
+    return image_text
+
+    os.remove('PDF_image.png')
 
 def extract_pdf_text(pdf_path):
     # Create a pdf file object
@@ -211,6 +221,7 @@ def extract_pdf_text(pdf_path):
             if not is_element_inside_any_table(element, page, tables):
 
                 # Check if the element is text element
+                #print (type(element))
                 if isinstance(element, LTTextContainer):
                     has_text = True
                     # Use the function to extract the text and format for each text element
@@ -256,9 +267,14 @@ def extract_pdf_text(pdf_path):
     for key, page_content in text_per_page.items():
         if len(page_content) >= 5:
             result += ''.join(page_content[4])
-    return result, has_text, has_picture, len(text_per_page.items())
+
+    if (len(result) < MIN_LENGTH ):
+        result = crop_and_extract_image(pdf_path)
+    return result, (has_text, has_picture, len(text_per_page.items()))
 
 def enumerate_pdfs(basedir='pdfs_en'):
+    basedir='special_cases'
+
     text_dir = f'{basedir}_text' 
     if not os.path.exists(text_dir):
         os.makedirs(text_dir)
@@ -275,7 +291,10 @@ def enumerate_pdfs(basedir='pdfs_en'):
         drug_text_file_name = f'{text_dir}/{file}'.replace('.pdf','.txt')
 
 
-        pdf_text, has_text, has_picture, pages = extract_pdf_text(f'{basedir}/{file}')
+        pdf_text, info_tuple = extract_pdf_text(f'{basedir}/{file}')
+        has_text, has_picture, pages = info_tuple
+
+        
         print (f'{basedir}/{file}', f'len {len(pdf_text)}', f'text: {has_text}', f'image: {has_picture}', f'pages: {pages}')
         with open(drug_text_file_name, 'wb') as file:
             file.write(pdf_text.encode('utf-8'))

@@ -3,12 +3,11 @@ import json
 import tqdm
 
 from pdf_extractor import extract_pdf_text
-from drug_pdf_retriever import get_drugs_pdfs
-from AI import ask_ai
-from semantic_search import get_index, populate_index, query_index
+from drug_pdf_retriever import get_drugs_pdfs, download_dir_prefix
+#from AI import ask_ai
+#from semantic_search import get_index, populate_index, query_index
 
 # pdf_path = 'pdfs/Rishum01_14_91168324.pdf'
-pdfs_dir = 'pdfs'
 summaries_path = 'summaries.json'
 MAX_CHUNK_SIZE = 10000  # Maximum number of characters the AI can handle
 failed_path = 'failed.json'
@@ -18,6 +17,7 @@ you are a drug leaflet summarizer. You are given the content of drug user leafle
 describing the drug, what is it intended for and how to use it. DO NOT USE MORE THAN 100 WORDS FOR THE SUMMARY
 """
 
+pdfs_dir = f'{download_dir_prefix}_e'
 
 def load_existing_summaries(filepath):
     if os.path.exists(filepath):
@@ -25,6 +25,14 @@ def load_existing_summaries(filepath):
             return json.load(file)
     return {}
 
+def save_pdf_text(pdfs_dir, filename, pdf_content):
+    text_dir = f'{pdfs_dir}_text' 
+    if not os.path.exists(text_dir):
+        os.makedirs(text_dir)
+
+    drug_text_file_name = f'{text_dir}/{filename}'.replace('.pdf','.txt')
+    with open(drug_text_file_name, 'wb') as file:
+        file.write(pdf_content.encode('utf-8'))
 
 def pre_process_summaries():
     # For each drug get its PDF from health website
@@ -37,6 +45,7 @@ def pre_process_summaries():
         try:
             if filename.lower().endswith('.pdf'):
                 drug_name = filename[:-4]
+
                 pdf_path = os.path.join(pdfs_dir, filename)
                 print(f"Processing file: {filename}")
 
@@ -47,13 +56,16 @@ def pre_process_summaries():
                 # Extract text from the PDF
                 try:
                     print(f"Extracting text from: {filename}")
-                    pdf_content = extract_pdf_text(pdf_path)
+                    pdf_content, _ = extract_pdf_text(pdf_path)
+                    save_pdf_text(pdfs_dir, filename, pdf_content)
+                    if (len(pdf_content) < 1000):
+                        raise Exception("pdf text is too small")
                     if not pdf_content.strip():
                         print(f'failed to extract text from: {filename}, came back empty.')
                         failed_process_list['files'].append(filename)
                         continue
                 except Exception as e:
-                    print(f'failed to extract text from: {filename}')
+                    print(f'failed to extract text from: {filename} error: {e}')
                     failed_process_list['files'].append(filename)
                     continue
 
@@ -63,10 +75,10 @@ def pre_process_summaries():
 
                 # Summarize each chunk and combine the results
                 summary = ""
-                for chunk in chunks:
+                """for chunk in chunks:
                     print(f"Summarizing chunk of size {len(chunk)} characters...")
                     chunk_summary = ask_ai(chunk, system_prompt)
-                    summary += chunk_summary + " "  # Append chunk summary
+                    summary += chunk_summary + " "  # Append chunk summary"""
 
                 # Save the summary to the map
                 summaries[drug_name] = summary.strip()
@@ -113,7 +125,7 @@ def query():
 
 def pre_process():
     pre_process_summaries()
-    pre_process_index()
+    #pre_process_index()
 
 
 if __name__ == '__main__':
