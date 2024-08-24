@@ -133,7 +133,8 @@ def image_to_text(image_path):
     # Read the image
     img = Image.open(image_path)
     # Extract the text from the image
-    text = pytesseract.image_to_string(img)
+    options = "--tessdata-dir ./ "
+    text = pytesseract.image_to_string(img, lang = 'eng+heb', config=options)
     return text
 
 def crop_and_extract_image(pdf_path):
@@ -198,7 +199,7 @@ def extract_pdf_text(pdf_path):
         page_elements.sort(key=lambda a: a[0], reverse=True)
 
         # Find the elements that composed a page
-        for i, component in enumerate(page_elements):
+        '''for i, component in enumerate(page_elements):
 
             # Extract the element of the page layout
             element = component[1]
@@ -231,6 +232,7 @@ def extract_pdf_text(pdf_path):
                     # Append the format for each line containing text
                     line_format.append(format_per_line)
                     page_content.append(line_text)
+                    print ("text: " + line_text)
 
                 # Check the elements for images
                 if isinstance(element, LTFigure):
@@ -248,11 +250,13 @@ def extract_pdf_text(pdf_path):
                     line_format.append('image')
                     # Update the flag for image detection
                     image_flag = True
+                    #print ("image: " + image_text)
 
         # Create the key of the dictionary
         dctkey = 'Page_' + str(pagenum)
         # Add the list of list as value of the page key
         text_per_page[dctkey] = [page_text, line_format, text_from_images, text_from_tables, page_content]
+        '''
 
     # Close the pdf file object
     pdfFileObj.close()
@@ -272,8 +276,10 @@ def extract_pdf_text(pdf_path):
         result = crop_and_extract_image(pdf_path)
     return result, (has_text, has_picture, len(text_per_page.items()))
 
-def enumerate_pdfs(basedir='pdfs_en'):
-    basedir='special_cases'
+def enumerate_pdfs(basedir='pdfs_e'):
+
+    failed_process_list = {'files': []}
+    failed_path = 'failed_extract.json'
 
     text_dir = f'{basedir}_text' 
     if not os.path.exists(text_dir):
@@ -287,20 +293,30 @@ def enumerate_pdfs(basedir='pdfs_en'):
 
     # Enumerate and print the files
     for index, file in enumerate(files, start=1):
-        #file = 'AJOVY.pdf'
-        drug_text_file_name = f'{text_dir}/{file}'.replace('.pdf','.txt')
-
-
-        pdf_text, info_tuple = extract_pdf_text(f'{basedir}/{file}')
-        has_text, has_picture, pages = info_tuple
-
         
-        print (f'{basedir}/{file}', f'len {len(pdf_text)}', f'text: {has_text}', f'image: {has_picture}', f'pages: {pages}')
-        with open(drug_text_file_name, 'wb') as file:
-            file.write(pdf_text.encode('utf-8'))
+        try:
+            drug_text_file_name = f'{text_dir}/{file}'.replace('.pdf','.txt')
+            if os.path.exists(drug_text_file_name):
+                continue
+            pdf_text, info_tuple = extract_pdf_text(f'{basedir}/{file}')
+            has_text, has_picture, pages = info_tuple
 
-        #exit(-1)
+            
+            print (f'{basedir}/{file}', f'len {len(pdf_text)}', f'text: {has_text}', f'image: {has_picture}', f'pages: {pages}')
+            with open(drug_text_file_name, 'wb') as file:
+                file.write(pdf_text.encode('utf-8'))
+        except Exception as e:
+            print(f'failed to extract text from: {file} error: {e}')
+            failed_process_list['files'].append(file)
+            continue
+        
+
+
+    with open(failed_path, 'w', encoding='utf-8') as file:
+        json.dump(failed_process_list, file, ensure_ascii=False, indent=4)
+
+    print("failed filenames have been saved to:", failed_path)
     
 
 if __name__ == '__main__':
-    enumerate_pdfs('pdfs_en')
+    enumerate_pdfs('pdfs_h')

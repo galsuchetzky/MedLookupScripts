@@ -5,8 +5,9 @@ import re
 
 base_drug_url = 'https://mohpublic.z6.web.core.windows.net/IsraelDrugs/'
 all_drug_names_url = 'https://medlookup.org/getAllDrugNames'
-get_drugs_info_url = 'https://medlookup.org/getDragsInfo'
+get_drugs_info_url = 'http://localhost/getDragsInfo'
 all_drug_names_file_path = 'all_drug_names.json'
+drug_mapping_file_path = 'drug2pdf_mapping.json'
 download_dir_prefix = 'pdfs'
 
 
@@ -62,21 +63,26 @@ def get_drugs_info(drug_names):
 def get_drugs_leaflets(drug_names, language):
     response = get_drugs_info(drug_names)
     leaflets = {}
+    downloaded_leaflets = set()
+
     for drug in response:
         if language not in response[drug]:
             continue
         pdf = response[drug][language]['l']
-        if pdf in leaflets.values():
-            continue
+        #if pdf in leaflets.values():
+        #    continue
         leaflets[drug] = pdf
     download_dir = f'{download_dir_prefix}_{language}' 
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
 
     for drug in leaflets:
-        drugname = re.sub(r'[/\\]', '-', drug)
-        drugname = re.sub('"', '', drugname)
-        filename = drugname + '.pdf'
+        if (leaflets[drug] in downloaded_leaflets):
+            continue
+
+        #drugname = re.sub(r'[/\\]', '-', leaflets[drug])
+        #drugname = re.sub('"', '', drugname)
+        filename = leaflets[drug]
 
         file_path = os.path.join(download_dir, filename)
         if not os.path.exists(file_path):
@@ -89,14 +95,23 @@ def get_drugs_leaflets(drug_names, language):
                 with open(file_path, 'wb') as file:
                     file.write(response.content)
 
+                downloaded_leaflets.add(leaflets[drug])
                 print(f"Successfully downloaded {filename}")
             except requests.exceptions.RequestException as e:
                 print(f"An error occurred while downloading {base_drug_url + leaflets[drug]}: {e}")
 
+    try:
+        with open(drug_mapping_file_path, 'w', encoding='utf-8') as file:
+            json.dump(leaflets, file, ensure_ascii=False, indent=4)
+        print("Saved drug mapping data to file.")
+    except Exception as e:
+        print(f"An error occurred while saving the drug mapping data file: {e}")
+    print(f"Downloaded {len(downloaded_leaflets)} PDFs for {len(leaflets)} drugs")
+
 
 def get_drugs_pdfs():
     all_drugs = get_drug_names()['drugs']
-    get_drugs_leaflets(all_drugs, 'e')
+    get_drugs_leaflets(all_drugs, 'h')
 
 
 if __name__ == '__main__':
